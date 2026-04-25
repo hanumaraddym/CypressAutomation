@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     tools {
-        nodejs 'NodeJS'
+        nodejs 'NodeJS'   // Make sure this is Node 18 in Jenkins config
     }
 
     stages {
@@ -15,6 +15,13 @@ pipeline {
 
         stage('Install Dependencies') {
             steps {
+                sh 'echo "Cleaning old node modules..."'
+                sh 'rm -rf node_modules package-lock.json'
+
+                sh 'echo "Cleaning npm cache..."'
+                sh 'npm cache clean --force'
+
+                sh 'echo "Installing dependencies..."'
                 sh 'npm install'
             }
         }
@@ -31,7 +38,7 @@ pipeline {
                 sh 'rm -f cypress/reports/report.json || true'
 
                 sh 'echo "Merging reports..."'
-                sh 'npx mochawesome-merge cypress/reports/mochawesome*.json > cypress/reports/report.json'
+                sh 'npx mochawesome-merge "cypress/reports/mochawesome*.json" > cypress/reports/report.json'
 
                 sh 'echo "Generating HTML report..."'
                 sh 'npx marge cypress/reports/report.json -f report -o cypress/reports'
@@ -48,8 +55,14 @@ pipeline {
             steps {
                 emailext(
                     subject: "Cypress Report - Build #${BUILD_NUMBER}",
-                    body: "Execution completed. Please find report attached.",
-                    to: "just.sdet2@gmail.com",
+                    body: """
+                        <h2>Automation Test Report</h2>
+                        <p><b>Build Number:</b> ${BUILD_NUMBER}</p>
+                        <p><b>Status:</b> ${currentBuild.currentResult}</p>
+                        <p>Report is attached.</p>
+                    """,
+                    mimeType: 'text/html',
+                    to: "just.sdet2@gmail.com",   
                     attachmentsPattern: "cypress/reports/report.html"
                 )
             }
