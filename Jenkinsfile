@@ -7,13 +7,11 @@ pipeline {
 
     stages {
 
-
         stage('Checkout') {
             steps {
                 git branch: 'main', url: 'https://github.com/hanumaraddym/CypressAutomation.git'
             }
         }
-
 
         stage('Install Dependencies') {
             steps {
@@ -30,8 +28,17 @@ pipeline {
         stage('Generate Report') {
             steps {
                 sh 'mkdir -p cypress/reports'
-                sh 'npx mochawesome-merge cypress/reports/*.json > cypress/reports/report.json'
-                sh 'npx marge cypress/reports/report.json -f report -o cypress/reports'
+                sh 'ls -l cypress/reports || true'
+
+                sh '''
+                if ls cypress/reports/*.json 1> /dev/null 2>&1; then
+                    echo "Merging reports..."
+                    npx mochawesome-merge cypress/reports/*.json > cypress/reports/report.json
+                    npx marge cypress/reports/report.json -f report -o cypress/reports
+                else
+                    echo "No JSON reports found. Skipping report generation."
+                fi
+                '''
             }
         }
 
@@ -40,25 +47,22 @@ pipeline {
                 archiveArtifacts artifacts: 'cypress/reports/**/*', allowEmptyArchive: true
             }
         }
-    }
-}
 
+        stage('Send Email') {
+            steps {
+                emailext (
+                    subject: "Jenkins Build: ${currentBuild.currentResult}",
+                    body: """
+                        Build Status: ${currentBuild.currentResult}
+                        Job Name: ${env.JOB_NAME}
+                        Build Number: ${env.BUILD_NUMBER}
 
-    post {
-        always {
-            emailext(
-                subject: "Cypress Test Report - Build #${BUILD_NUMBER}",
-                body: """
-                <h2>Test Execution Summary</h2>
-                <p>Job: ${JOB_NAME}</p>
-                <p>Build Number: ${BUILD_NUMBER}</p>
-                <p>Status: ${currentBuild.currentResult}</p>
-                <p>Check attached report for details.</p>
-                """,
-                to: "your-email@gmail.com",
-                attachmentsPattern: "cypress/reports/*.html"
-            )
+                        Check console output for details.
+                    """,
+                    to: "your-email@gmail.com",
+                    attachmentsPattern: 'cypress/reports/*.html'
+                )
+            }
         }
     }
 }
-
