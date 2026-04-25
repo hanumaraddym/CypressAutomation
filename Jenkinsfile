@@ -9,7 +9,7 @@ pipeline {
 
         stage('Checkout') {
             steps {
-                git 'https://github.com/hanumaraddym/CypressAutomation.git'
+                git branch: 'main', url: 'https://github.com/hanumaraddym/CypressAutomation.git'
             }
         }
 
@@ -47,9 +47,9 @@ pipeline {
         stage('Send Email') {
             steps {
                 emailext(
-                    subject: "Cypress Report",
+                    subject: "Cypress Report - Build #${BUILD_NUMBER}",
                     body: "Execution completed. Please find report attached.",
-                    to: "your-email@gmail.com",
+                    to: "just.sdet2@gmail.com",
                     attachmentsPattern: "cypress/reports/report.html"
                 )
             }
